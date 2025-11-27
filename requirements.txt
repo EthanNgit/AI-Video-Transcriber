@@ -1,0 +1,6 @@
+requests
+soundfile
+torch
+audio-separator
+python-dotenv
+openai
