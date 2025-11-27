@@ -1,0 +1,32 @@
+# Environment
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project data/output folders
+ephemeral/
+episodes/
+sounds/
+transcripts/
+trimmed_clips/
+
+# Old/unused scripts
+old_scripts/
+
+# Fonts and other assets
+*.ttf
