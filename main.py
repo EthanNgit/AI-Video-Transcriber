@@ -15,6 +15,21 @@ OUT_DIR = "ephemeral"
 OPEN_AI_API_KEY = os.getenv("OPEN_AI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+vad_model = None
+vad_utils = None
+
+
+def get_vad_model():
+    global vad_model, vad_utils
+    if vad_model is None:
+        vad_model, vad_utils = torch.hub.load(
+            repo_or_dir='snakers4/silero-vad',
+            model='silero_vad',
+            force_reload=False,
+            trust_repo=True
+        )
+    return vad_model, vad_utils
+
 
 def post_process_transcripts(segments):
     """Post processes transcript json to catch errors, hallucinations, etc"""
@@ -288,94 +303,137 @@ def separate_voice_from_audio(path_to_audio: str):
     return f"{output_directory}/{output_files[0]}"
 
 
-def get_audio_vad_metadata(path_to_audio: str):
-    """Creates metadata for start and end times of voices"""
-    vad_threshold = 0.9  # threshold for voice activity detector
-    min_speech_ms = 300  # minimum ms to consider for ?
-    min_silence_ms = 500  # minimum silence (in ms) to consider for ?
+def run_vad(audio, sr, threshold=0.9, min_speech_ms=300, min_silence_ms=500, speech_pad_ms=1000):
+    """
+    Core VAD function that runs on audio tensor/array.
 
-    # Load Silero VAD
-    model, utils = torch.hub.load(
-        repo_or_dir='snakers4/silero-vad',
-        model='silero_vad',
-        force_reload=False,
-        trust_repo=True
-    )
-    (get_speech_timestamps,
-     save_audio,
-     read_audio,
-     VADIterator,
-     collect_chunks) = utils
+    Args:
+        audio: numpy array or torch tensor of audio samples
+        sr: sample rate
+        threshold: VAD confidence threshold
+        min_speech_ms: minimum speech duration in ms
+        min_silence_ms: minimum silence duration in ms
+        speech_pad_ms: padding around speech in ms
 
-    # Load Audio
-    wav, sr = soundfile.read(path_to_audio)
+    Returns:
+        List of dicts with 'start' and 'end' in seconds
+    """
+    model, utils = get_vad_model()
+    get_speech_timestamps = utils[0]
 
-    # Convert stereo → mono if needed
+    if isinstance(audio, torch.Tensor):
+        wav = audio
+    else:
+        wav = torch.from_numpy(audio).float()
+
+    # Handle stereo -> mono
     if wav.ndim == 2:
-        wav = wav.mean(axis=1)
+        wav = wav.mean(dim=1) if isinstance(wav, torch.Tensor) else wav.mean(axis=1)
 
-    wav = torch.from_numpy(wav).float()
-
-    # Run Silero VAD
-    vad = get_speech_timestamps(
+    vad_result = get_speech_timestamps(
         wav,
         model,
         sampling_rate=sr,
-        threshold=vad_threshold,
+        threshold=threshold,
         min_speech_duration_ms=min_speech_ms,
         min_silence_duration_ms=min_silence_ms,
-        speech_pad_ms=1000
+        speech_pad_ms=speech_pad_ms
     )
-    metadata = [dict(start=(x["start"] / sr), end=(x["end"] / sr)) for x in vad]
 
-    return metadata
+    return [{"start": x["start"] / sr, "end": x["end"] / sr} for x in vad_result]
 
 
-def segment_audio_by_vad(path_to_audio: str, vad_metadata):
-    """Uses VAD metadata to determine how to merge intervals, slices audio into clips"""
-    split_threshold = 3
+def get_audio_vad_metadata(path_to_audio: str):
+    """Creates metadata for start and end times of voices."""
+    wav, sr = soundfile.read(path_to_audio)
+    return run_vad(wav, sr)
+
+
+def merge_vad_segments(vad_metadata, split_threshold=3.0):
+    """Merges VAD segments that are within split_threshold seconds of each other."""
+    if not vad_metadata:
+        return []
+
     intervals = []
-    current_start = None
-    current_end = None
+    current_start = vad_metadata[0]["start"]
+    current_end = vad_metadata[0]["end"]
 
-    file_name = f"{path_to_audio.split('/')[-1].split('.')[0]}"
+    for seg in vad_metadata[1:]:
+        gap = seg["start"] - current_end
+        if gap <= split_threshold:
+            current_end = max(current_end, seg["end"])
+        else:
+            intervals.append((current_start, current_end))
+            current_start = seg["start"]
+            current_end = seg["end"]
+
+    intervals.append((current_start, current_end))
+    return intervals
+
+
+def refine_vad_intervals(path_to_audio: str, intervals, padding=0.1):
+    """Second VAD pass to refine intervals by trimming leading/trailing silence."""
+    wav, sr = soundfile.read(path_to_audio)
+    if wav.ndim == 2:
+        wav = wav.mean(axis=1)
+
+    refined_intervals = []
+
+    for global_start, global_end in intervals:
+        start_sample = int(global_start * sr)
+        end_sample = int(global_end * sr)
+        segment_audio = wav[start_sample:end_sample]
+
+        # Run VAD for refinement
+        vad_segments = run_vad(segment_audio, sr)
+
+        if not vad_segments:
+            print(f"No speech in interval {global_start:.2f}-{global_end:.2f}, skipping")
+            continue
+
+        local_start = vad_segments[0]["start"]
+        local_end = vad_segments[-1]["end"]
+
+        new_start = max(global_start, global_start + local_start - padding)
+        new_end = min(global_end, global_start + local_end + padding)
+
+        trimmed_start = max(0, local_start - padding)
+        trimmed_end = (global_end - global_start) - local_end - padding
+
+        if trimmed_start > 0.3 or trimmed_end > 0.3:
+            print(f"Refined {global_start:.2f}-{global_end:.2f} -> {new_start:.2f}-{new_end:.2f} "
+                  f"(trimmed {trimmed_start:.2f}s start, {max(0, trimmed_end):.2f}s end)")
+
+        refined_intervals.append((new_start, new_end))
+
+    return refined_intervals
+
+
+def segment_audio_by_vad(path_to_audio: str, vad_metadata, refine=True):
+    """Uses VAD metadata to merge intervals, optionally refine, then slice audio into clips."""
+    file_name = path_to_audio.split('/')[-1].split('.')[0]
     clips_path = f"{OUT_DIR}/{file_name}/clips"
     os.makedirs(clips_path, exist_ok=True)
 
-    for seg in vad_metadata:
-        start = seg["start"]
-        end = seg["end"]
+    # First pass: merge nearby segments
+    intervals = merge_vad_segments(vad_metadata, split_threshold=3.0)
+    print(f"First pass: {len(intervals)} intervals")
 
-        if current_start is None:
-            # start first interval
-            current_start = start
-            current_end = end
-            continue
-
-        gap = start - current_end
-
-        if gap <= split_threshold:
-            # merge into current interval
-            current_end = max(current_end, end)
-        else:
-            # close current interval and start a new one
-            intervals.append((current_start, current_end))
-            current_start = start
-            current_end = end
-
-    # append the final interval
-    if current_start is not None:
-        intervals.append((current_start, current_end))
+    # Second pass: refine each interval
+    if refine:
+        print("Running second VAD pass to refine intervals...")
+        intervals = refine_vad_intervals(path_to_audio, intervals)
+        print(f"After refinement: {len(intervals)} intervals")
 
     print(intervals)
 
+    # Create clips
     wav, sr = soundfile.read(path_to_audio)
-    slice_paths = []  # store filepaths of created slices
+    slice_paths = []
 
     for idx, (start_sec, end_sec) in enumerate(intervals):
         start_sample = int(start_sec * sr)
         end_sample = int(end_sec * sr)
-
         audio_slice = wav[start_sample:end_sample]
 
         out_path = f"{clips_path}/{file_name}_slice_{idx:03d}.wav"
@@ -471,7 +529,7 @@ def overlay_subtitles(video_path, json_path, output_path):
 
 
 def main():
-    video_path = "episodes/3a_Jellyfishing.mkv"
+    video_path = "episodes/ported/1a_HelpWanted.mkv"
     audio_path = separate_audio_from_video(video_path)
     voice_path = separate_voice_from_audio(audio_path)
     md = get_audio_vad_metadata(voice_path)
@@ -479,9 +537,19 @@ def main():
 
     print("Transcribing the audio...")
     all_jsons = []
+    # # for path, start_sec, end_sec in clips_path:
+    # #     result = get_audio_transcript(str(path),
+    # #                                   "本稿内容与《海绵宝宝》相关，涉及的词汇包括：海绵宝宝、派大星、章鱼哥、痞老板、蟹老板、蟹堡王、蟹黄堡、秘密配方、贝壳。")
+    # #     all_jsons.append((result, start_sec, end_sec))
+
     for path, start_sec, end_sec in clips_path:
         result = get_audio_transcript(str(path),
                                       "本稿内容与《海绵宝宝》相关，涉及的词汇包括：海绵宝宝、派大星、章鱼哥、痞老板、蟹老板、蟹堡王、蟹黄堡、秘密配方、贝壳。")
+        # Add debug logging
+        print(f"Clip {path}: offset={start_sec:.2f}s")
+        for seg in result.get("segments", []):
+            print(
+                f"  Local: {seg['start']:.2f}-{seg['end']:.2f} | Global: {seg['start'] + start_sec:.2f}-{seg['end'] + start_sec:.2f} | {seg['text'][:30]}")
         all_jsons.append((result, start_sec, end_sec))
 
     final_json = merge_whisper_transcripts(all_jsons)
@@ -502,6 +570,8 @@ def main():
 
     with open(json_out_path, "w", encoding="utf-8") as out:
         json.dump(corrected_segments, out, ensure_ascii=False, indent=2)
+
+
 
     print("Overlaying subtitles..")
 
