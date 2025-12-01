@@ -299,8 +299,14 @@ def separate_voice_from_audio(path_to_audio: str):
     separator.load_model(model_filename='vocals_mel_band_roformer.ckpt')
 
     output_files = separator.separate(path_to_audio, {"Vocals": file_name})
+    res_dir = f"{output_directory}/{output_files[0]}"
 
-    return f"{output_directory}/{output_files[0]}"
+    wav, sr = soundfile.read(res_dir)  # Convert vocals to mono
+    if wav.ndim == 2:
+        wav = wav.mean(axis=1)
+        soundfile.write(res_dir, wav, sr)
+
+    return res_dir
 
 
 def run_vad(audio, sr, threshold=0.9, min_speech_ms=300, min_silence_ms=500, speech_pad_ms=1000):
@@ -325,10 +331,6 @@ def run_vad(audio, sr, threshold=0.9, min_speech_ms=300, min_silence_ms=500, spe
         wav = audio
     else:
         wav = torch.from_numpy(audio).float()
-
-    # Handle stereo -> mono
-    if wav.ndim == 2:
-        wav = wav.mean(dim=1) if isinstance(wav, torch.Tensor) else wav.mean(axis=1)
 
     vad_result = get_speech_timestamps(
         wav,
@@ -374,9 +376,6 @@ def merge_vad_segments(vad_metadata, split_threshold=3.0):
 def refine_vad_intervals(path_to_audio: str, intervals, padding=0.1):
     """Second VAD pass to refine intervals by trimming leading/trailing silence."""
     wav, sr = soundfile.read(path_to_audio)
-    if wav.ndim == 2:
-        wav = wav.mean(axis=1)
-
     refined_intervals = []
 
     for global_start, global_end in intervals:
@@ -529,7 +528,7 @@ def overlay_subtitles(video_path, json_path, output_path):
 
 
 def main():
-    video_path = "episodes/ported/1a_HelpWanted.mkv"
+    video_path = "episodes/ported/17a_Arrgh!.mkv"
     audio_path = separate_audio_from_video(video_path)
     voice_path = separate_voice_from_audio(audio_path)
     md = get_audio_vad_metadata(voice_path)
@@ -537,11 +536,6 @@ def main():
 
     print("Transcribing the audio...")
     all_jsons = []
-    # # for path, start_sec, end_sec in clips_path:
-    # #     result = get_audio_transcript(str(path),
-    # #                                   "本稿内容与《海绵宝宝》相关，涉及的词汇包括：海绵宝宝、派大星、章鱼哥、痞老板、蟹老板、蟹堡王、蟹黄堡、秘密配方、贝壳。")
-    # #     all_jsons.append((result, start_sec, end_sec))
-
     for path, start_sec, end_sec in clips_path:
         result = get_audio_transcript(str(path),
                                       "本稿内容与《海绵宝宝》相关，涉及的词汇包括：海绵宝宝、派大星、章鱼哥、痞老板、蟹老板、蟹堡王、蟹黄堡、秘密配方、贝壳。")
@@ -570,8 +564,6 @@ def main():
 
     with open(json_out_path, "w", encoding="utf-8") as out:
         json.dump(corrected_segments, out, ensure_ascii=False, indent=2)
-
-
 
     print("Overlaying subtitles..")
 
