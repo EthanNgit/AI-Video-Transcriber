@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 import soundfile
@@ -9,29 +10,34 @@ class VoiceDetector:
     def __init__(self):
         pass
 
-    def separate_voice_from_audio(self, path_to_audio: str, output_path=""):
+    def separate_voice_from_audio(self, path_to_audio: str, output_path: str):
         """Separates voice from other elements in an audio file"""
+
+        out_dir = os.path.dirname(output_path)
+        out_name = os.path.splitext(os.path.basename(output_path))[0]
+
+        os.makedirs(out_dir, exist_ok=True)
+
         print("Separating vocals... (This may take a while)")
 
         separator = Separator(
             output_single_stem="Vocals",
             sample_rate=16000,
-            output_dir=output_path
+            output_dir=out_dir
         )
 
         separator.load_model(model_filename='vocals_mel_band_roformer.ckpt')
 
-        output_name = f"{path_to_audio.split('/')[-1].split('.')[0]}"
+        output_files = separator.separate(path_to_audio, {"Vocals": out_name})
+        result_path = os.path.join(out_dir, output_files[0])
 
-        output_files = separator.separate(path_to_audio, {"Vocals": output_name})
-        res_dir = f"{output_path}/{output_files[0]}"
-
-        wav, sr = soundfile.read(res_dir)  # Convert vocals to mono
+        # Convert to mono if needed
+        wav, sr = soundfile.read(result_path)
         if wav.ndim == 2:
             wav = wav.mean(axis=1)
-            soundfile.write(res_dir, wav, sr)
+            soundfile.write(result_path, wav, sr)
 
-        return res_dir
+        return result_path
 
     def get_audio_vad_metadata(self, path_to_audio: str, start_ms: int = 0, end_ms: int = float('inf')) -> list[dict[str, Any]]:
         """Creates metadata for start and end times of voices."""

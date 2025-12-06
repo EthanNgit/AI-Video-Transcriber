@@ -93,11 +93,9 @@ def refine_vad_intervals(path_to_audio: str, intervals, padding=0.1):
     return refined_intervals
 
 
-def segment_audio_by_vad(path_to_audio: str, vad_metadata, refine=True):
+def segment_audio_by_vad(path_to_audio: str, output_path, vad_metadata, refine=True):
     """Uses VAD metadata to merge intervals, optionally refine, then slice audio into clips."""
     file_name = path_to_audio.split('/')[-1].split('.')[0]
-    clips_path = f"{OUT_DIR}/{file_name}/clips"
-    os.makedirs(clips_path, exist_ok=True)
 
     # First pass: merge nearby segments
     intervals = merge_vad_segments(vad_metadata, split_threshold=3.0)
@@ -120,7 +118,7 @@ def segment_audio_by_vad(path_to_audio: str, vad_metadata, refine=True):
         end_sample = int(end_sec * sr)
         audio_slice = wav[start_sample:end_sample]
 
-        out_path = f"{clips_path}/{file_name}_slice_{idx:03d}.wav"
+        out_path = f"{output_path}/{file_name}_slice_{idx:03d}.wav"
         soundfile.write(out_path, audio_slice, sr)
         slice_paths.append((out_path, start_sec, end_sec))
 
@@ -134,19 +132,22 @@ video_processor = VideoProcessor()
 
 
 def main():
-    video_path = "episodes/ported/7a_HallMonitor.mkv"
+    video_path = "episodes/ported/17b_RockBottom.mkv"
     file_name = f"{video_path.split("/")[-1].split(".")[0]}"
 
-    audio_file_path = f"{OUT_DIR}/{file_name}/sound/{file_name}_audio.mkv"
+    audio_file_path = f"{OUT_DIR}/{file_name}/sound/{file_name}_audio.wav"
     os.makedirs(os.path.dirname(audio_file_path), exist_ok=True)
     audio_path = video_processor.separate_audio_from_video(video_path, audio_file_path)
 
-    vocals_dir = f"{OUT_DIR}/{file_name}/vocals"
-    os.makedirs(vocals_dir, exist_ok=True)
+    vocals_dir = f"{OUT_DIR}/{file_name}/vocals/{file_name}_vocals.wav"
+    os.makedirs(os.path.dirname(vocals_dir), exist_ok=True)
     voice_path = voice_detector.separate_voice_from_audio(audio_path, vocals_dir)
 
     md = voice_detector.get_audio_vad_metadata(voice_path)
-    clips_path = segment_audio_by_vad(voice_path, md)
+
+    clips_out_path = f"{OUT_DIR}/{file_name}/clips"
+    os.makedirs(clips_out_path, exist_ok=True)
+    clips_path = segment_audio_by_vad(voice_path, clips_out_path, md)
 
     print("Transcribing the audio...")
     all_jsons = []

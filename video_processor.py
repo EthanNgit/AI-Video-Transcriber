@@ -61,11 +61,6 @@ class VideoProcessor:
         Converts a video file to audio file
         :returns directory path where the audio file exists
         """
-
-        file_name = f"{path_to_video.split("/")[-1].split(".")[0]}"
-        audio_path = f"{output_path}/{file_name}.wav"
-        os.makedirs(os.path.dirname(audio_path), exist_ok=True)
-
         subprocess.run([
             "ffmpeg",
             "-y",  # overwrite output
@@ -73,10 +68,10 @@ class VideoProcessor:
             "-ac", "1",  # mono
             "-ar", "16000",  # 16 kHz (good for speech + Silero)
             "-vn",  # no video
-            audio_path
+            output_path
         ])
 
-        return audio_path
+        return output_path
 
     def _json_to_srt(self, path_to_json, srt_path):
         """Formats transcript json to use correct timestamps"""
