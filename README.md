@@ -2,6 +2,10 @@
 
 A Python tool for processing video/audio files to extract and transcribe speech using voice activity detection and OpenAI's Whisper API.
 
+## Work In progress
+
+ - Currently only has hardcoded processing by file, many things are not final.
+
 ## Features
 
 - Voice separation from background audio
