@@ -103,11 +103,9 @@ The tool will automatically:
 - `video_processor.py` - Video processing and subtitle overlay
 - `dependency_validator.py` - Dependency validation utilities
 - `README.md` - This file
-- `NOTICE.md` - Detailed third-party attributions
 
 ## License
-
-[Add your license here]
+This project is licensed under the MIT License.
 
 ## Contributing
 
@@ -116,7 +114,6 @@ When contributing to this project, please ensure:
 1. All dependencies are properly attributed
 2. New dependencies are added to `requirements.txt`
 3. Attribution comments are added to code using third-party libraries
-4. The NOTICE.md file is updated with new attributions
 
 ## Disclaimer
 
