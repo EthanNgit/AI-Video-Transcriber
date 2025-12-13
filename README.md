@@ -5,6 +5,10 @@ A Python tool for processing video/audio files to extract and transcribe speech 
 ## Work In progress
 
  - Currently only has hardcoded processing by file, many things are not final.
+ - Want to experiment with a local whisper model such as faster whisper
+ - Want to add support for choosing post processing model or the option to turn off post processing (choosing whisper and post processing prompt as well)
+ - Be able to cmd run the processing file or add interface for it
+ - Experiment more with concurrency and gpu processing
 
 ## Features
 
