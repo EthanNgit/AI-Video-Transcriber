@@ -1,5 +1,19 @@
+"""
+Whisper Transcription Tool
+
+A tool for processing video/audio files to extract and transcribe speech.
+
+Attribution & Credits:
+- Audio separation: python-audio-separator (https://github.com/nomadkaraoke/python-audio-separator)
+  Built on Ultimate Vocal Remover GUI by Anjok07 (https://github.com/Anjok07/ultimatevocalremovergui)
+- Voice Activity Detection: Silero VAD (https://github.com/snakers4/silero-vad)
+- Transcription: OpenAI Whisper API (https://openai.com/api/)
+- Video processing: FFmpeg (https://ffmpeg.org/)
+"""
+
 import json
 import os
+import sys
 import soundfile
 from dotenv import load_dotenv
 
@@ -7,6 +21,7 @@ from corrector import Corrector
 from transcriber import Transcriber
 from voice_detector import VoiceDetector
 from video_processor import VideoProcessor
+from dependency_validator import validate_dependencies
 
 load_dotenv()
 OUT_DIR = "ephemeral"
@@ -45,7 +60,7 @@ def merge_whisper_transcripts(all_jsons):
 def merge_vad_segments(vad_metadata, split_threshold=3.0):
     """Merges VAD segments that are within split_threshold seconds of each other."""
     if not vad_metadata:
-        return []
+        return []   
 
     intervals = []
     current_start = vad_metadata[0]["start"]
@@ -125,13 +140,7 @@ def segment_audio_by_vad(path_to_audio: str, output_path, vad_metadata, refine=T
     return slice_paths
 
 
-corrector = Corrector()
-transcriber = Transcriber()
-voice_detector = VoiceDetector()
-video_processor = VideoProcessor()
-
-
-def main():
+def main(video_processor, voice_detector, transcriber, corrector):
     video_path = "episodes/ported/17b_RockBottom.mkv"
     file_name = f"{video_path.split("/")[-1].split(".")[0]}"
 
@@ -186,4 +195,25 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Validate all dependencies before running
+    print("=" * 60)
+    print("Validating dependencies...")
+    print("=" * 60)
+    validate_dependencies()
+    print("=" * 60)
+    print()
+    
+    # Initialize components after validation
+    print("Initializing components...")
+    try:
+        corrector = Corrector()
+        transcriber = Transcriber()
+        voice_detector = VoiceDetector()
+        video_processor = VideoProcessor()
+        print("All components initialized successfully\n")
+    except Exception as e:
+        print(f"Failed to initialize components: {e}")
+        sys.exit(1)
+    
+    # Run main program
+    main(video_processor, voice_detector, transcriber, corrector)
