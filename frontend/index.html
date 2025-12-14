@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Transcriber</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Video Transcriber</h1>
+      </header>
+      <form id="transcribeForm">
+        <div class="form-group file-upload" id="dropZone">
+          <input type="file" id="videoFile" accept="video/*" required />
+          <label for="videoFile" id="fileLabel">
+            <span class="icon">📁</span>
+            <span id="fileName">Click or Drag Video File Here</span>
+          </label>
+        </div>
+
+        <div class="row">
+          <div class="form-group half">
+            <label for="language">Language</label>
+            <select id="language">
+              <option value="en">English</option>
+              <option value="zh">Chinese</option>
+            </select>
+          </div>
+          <div class="form-group half">
+            <label for="whisperPrompt">
+              Whisper Prompt
+              <span
+                class="tooltip-icon"
+                data-tooltip="Optional context or words to guide the Whisper model (max 500 chars)."
+                >?</span
+              >
+            </label>
+            <textarea
+              id="whisperPrompt"
+              maxlength="500"
+              rows="2"
+              placeholder="Optional prompt..."
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <input type="checkbox" id="postProcessingToggle" checked />
+          <label for="postProcessingToggle">Enable Post-Processing</label>
+        </div>
+
+        <div class="form-group" id="postProcessingSection">
+          <label for="postProcessingPrompt">
+            Post-Processing Prompt
+            <span
+              class="tooltip-icon"
+              data-tooltip="Instructions for the LLM to refine the transcript (max 5000 chars)."
+              >?</span
+            >
+          </label>
+          <textarea
+            id="postProcessingPrompt"
+            maxlength="5000"
+            rows="6"
+            placeholder="Enter instructions..."
+          ></textarea>
+        </div>
+
+        <button type="submit" id="transcribeBtn">Transcribe</button>
+      </form>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
