@@ -32,6 +32,19 @@ OUT_DIR = "ephemeral"
 os.makedirs(OUT_DIR, exist_ok=True)
 app.mount("/results", StaticFiles(directory=OUT_DIR), name="results")
 
+# Font configuration
+FONT_DIR = "/app/fonts"
+FONT_MAP = {
+    "en": {
+        "NotoSans": os.path.join(FONT_DIR, "NotoSans-Regular.ttf"),
+        "Roboto": os.path.join(FONT_DIR, "Roboto-Regular.ttf"),
+    },
+    "zh": {
+        "NotoSansSC": os.path.join(FONT_DIR, "NotoSansSC-Regular.ttf"),
+        "NotoSansTC": os.path.join(FONT_DIR, "NotoSansTC-Regular.ttf"),
+    }
+}
+
 # Initialize components
 try:
     validate_dependencies()
@@ -42,6 +55,11 @@ try:
     print("Components initialized")
 except Exception as e:
     print(f"Initialization failed: {e}")
+
+@app.get("/fonts")
+async def get_fonts():
+    """Returns available fonts for each language"""
+    return {"fonts": FONT_MAP}
 
 # Helper functions from original main.py
 def merge_whisper_transcripts(all_jsons):
@@ -115,6 +133,7 @@ def segment_audio_by_vad(path_to_audio: str, output_path, vad_metadata, refine=T
 async def transcribe_video(
     video: UploadFile = File(...),
     language: str = Form(...),
+    font: Optional[str] = Form(None),
     whisper_prompt: Optional[str] = Form(None),
     post_processing: bool = Form(True),
     post_processing_prompt: Optional[str] = Form(None)
@@ -176,7 +195,13 @@ async def transcribe_video(
         # 6. Overlay Subtitles
         final_video_path = os.path.join(session_dir, "result", "output.mkv")
         os.makedirs(os.path.dirname(final_video_path), exist_ok=True)
-        video_processor.overlay_transcription_subtitles(video_path, final_transcript_path, final_video_path)
+        
+        # Get font path
+        font_path = None
+        if font and language in FONT_MAP and font in FONT_MAP[language]:
+            font_path = FONT_MAP[language][font]
+        
+        video_processor.overlay_transcription_subtitles(video_path, final_transcript_path, final_video_path, font_path)
 
         return {
             "status": "success",

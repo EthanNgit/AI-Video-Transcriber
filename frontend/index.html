@@ -29,21 +29,28 @@
             </select>
           </div>
           <div class="form-group half">
-            <label for="whisperPrompt">
-              Whisper Prompt
-              <span
-                class="tooltip-icon"
-                data-tooltip="Optional context or words to guide the Whisper model (max 500 chars)."
-                >?</span
-              >
-            </label>
-            <textarea
-              id="whisperPrompt"
-              maxlength="500"
-              rows="2"
-              placeholder="Optional prompt..."
-            ></textarea>
+            <label for="font">Subtitle Font</label>
+            <select id="font">
+              <option value="">Loading fonts...</option>
+            </select>
           </div>
+        </div>
+
+        <div class="form-group">
+          <label for="whisperPrompt">
+            Whisper Prompt
+            <span
+              class="tooltip-icon"
+              data-tooltip="Optional context or words to guide the Whisper model (max 500 chars)."
+              >?</span
+            >
+          </label>
+          <textarea
+            id="whisperPrompt"
+            maxlength="500"
+            rows="2"
+            placeholder="Optional prompt..."
+          ></textarea>
         </div>
 
         <div class="form-group checkbox-group">

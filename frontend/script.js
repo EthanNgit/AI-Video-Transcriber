@@ -5,6 +5,47 @@ document.addEventListener("DOMContentLoaded", () => {
   const ppToggle = document.getElementById("postProcessingToggle");
   const ppSection = document.getElementById("postProcessingSection");
   const form = document.getElementById("transcribeForm");
+  const languageSelect = document.getElementById("language");
+  const fontSelect = document.getElementById("font");
+
+  let fontMap = {};
+
+  // Fetch available fonts
+  async function loadFonts() {
+    try {
+      const response = await fetch("http://localhost:8000/fonts");
+      const data = await response.json();
+      fontMap = data.fonts;
+      updateFontOptions();
+    } catch (error) {
+      console.error("Failed to load fonts:", error);
+      fontSelect.innerHTML = '<option value="">No fonts available</option>';
+    }
+  }
+
+  // Update font dropdown based on selected language
+  function updateFontOptions() {
+    const lang = languageSelect.value;
+    fontSelect.innerHTML = "";
+
+    if (fontMap[lang]) {
+      Object.keys(fontMap[lang]).forEach((fontKey) => {
+        const option = document.createElement("option");
+        option.value = fontKey;
+        option.textContent = fontKey;
+        fontSelect.appendChild(option);
+      });
+    } else {
+      fontSelect.innerHTML =
+        '<option value="">No fonts for this language</option>';
+    }
+  }
+
+  // Language change handler
+  languageSelect.addEventListener("change", updateFontOptions);
+
+  // Load fonts on page load
+  loadFonts();
 
   // File Upload UI
   fileInput.addEventListener("change", (e) => {
@@ -80,6 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const formData = new FormData();
     formData.append("video", file);
     formData.append("language", document.getElementById("language").value);
+    formData.append("font", document.getElementById("font").value);
     formData.append(
       "whisper_prompt",
       document.getElementById("whisperPrompt").value

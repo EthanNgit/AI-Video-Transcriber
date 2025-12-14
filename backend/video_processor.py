@@ -7,7 +7,7 @@ class VideoProcessor:
     def __init__(self):
         pass
 
-    def overlay_transcription_subtitles(self, path_to_video, path_to_transcription_json, output_path):
+    def overlay_transcription_subtitles(self, path_to_video, path_to_transcription_json, output_path, font_path=None):
         """Overlays the subtitles from the transcript json on the video"""
 
         if not os.path.exists(path_to_video):
@@ -32,11 +32,18 @@ class VideoProcessor:
         # Escape backslashes for Windows ffmpeg filter
         srt_path_escaped = srt_path.replace('\\', '/').replace(':', '\\:')
 
+        # Build subtitles filter with optional font
+        if font_path and os.path.exists(font_path):
+            font_path_escaped = font_path.replace('\\', '/').replace(':', '\\:')
+            subtitles_filter = f"subtitles='{srt_path_escaped}':force_style='FontName={os.path.splitext(os.path.basename(font_path))[0]},FontFile={font_path_escaped}'"
+        else:
+            subtitles_filter = f"subtitles='{srt_path_escaped}'"
+
         cmd = [
             'ffmpeg',
             '-y',
             '-i', path_to_video,
-            '-vf', f"subtitles='{srt_path_escaped}'",
+            '-vf', subtitles_filter,
             '-c:a', 'copy',
             '-preset', 'ultrafast',
             output_path
