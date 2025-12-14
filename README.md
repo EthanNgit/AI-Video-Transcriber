@@ -1,137 +1,101 @@
-# Whisper Transcription Tool
+# Video Transcription Tool
 
-A Python tool for processing video/audio files to extract and transcribe speech using voice activity detection and OpenAI's Whisper API.
-
-## Work In progress
-
- - Currently only has hardcoded processing by file, many things are not final.
- - Want to experiment with a local whisper model such as faster whisper
- - Want to add support for choosing post processing model or the option to turn off post processing (choosing whisper and post processing prompt as well)
- - Be able to cmd run the processing file or add interface for it
- - Experiment more with concurrency and gpu processing
+Web-Based tool for generating the transcript of videos. Uses OpenAi Whisper 2 model along with a couple optimization steps in order to more accurately transcribe audio. Optionally can use Gemini LLM to post process the transcripts to reduce the hallucinations on Whisper's behalf as well as correct content specific mistakes such as names.
 
 ## Features
 
-- Voice separation from background audio
-- Voice Activity Detection (VAD)
-- Automated transcription using OpenAI Whisper
-- Subtitle overlay on videos
-- Post-processing and correction of transcripts
+- **Web Interface**: Modern, intuitive UI for video upload and transcription
+- **Multi-language Support**: English and Chinese transcription with language-specific fonts
+- **Voice Activity Detection**: Intelligent segmentation of speech from silence
+- **Voice Separation**: Automatic isolation of vocals from background audio
+- **Customizable Transcription**: Optional Whisper prompts for context-aware transcription
+- **Post-Processing**: LLM-based transcript refinement and correction
+- **Automatic Subtitles**: Hardcoded subtitles on output video with font selection
+- **Dockerized**: Fully containerized application with all dependencies included
 
 ## Requirements
 
 ### System Dependencies
 
-- **FFmpeg**: Required for video/audio processing
-  - Windows: Download from [ffmpeg.org](https://ffmpeg.org/download.html)
-  - Linux: `sudo apt-get install ffmpeg`
-  - macOS: `brew install ffmpeg`
+- **Docker**: Required for running the application
+  - Windows/macOS: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+  - Linux: [Docker Engine](https://docs.docker.com/engine/install/)
+- **Docker Compose**: Included with Docker Desktop, or install separately on Linux
 
-### Python Dependencies
+**Note**: FFmpeg and all other dependencies are handled inside the Docker containers - no local installation required!
 
-See `requirements.txt` for all Python package dependencies.
+## Quick Start
 
-## Installation
+1. **Clone the repository**
 
-1. Install FFmpeg (see above)
-2. Install Python dependencies:
+2. **Set up environment variables**
 
-```bash
-pip install -r requirements.txt
-```
+Create a `.env` file in the root directory:
 
-3. Create a `.env` file with your API keys:
-
-```
-OPEN_AI_API_KEY=your_openai_key_here
+```env
+OPENAI_API_KEY=your_openai_key_here
 GEMINI_API_KEY=your_gemini_key_here
 GEMINI_URL=your_gemini_url_here
 ```
 
-## Attributions and Credits
+3. **Start the application**
 
-This project uses several open-source libraries and tools:
+```bash
+docker compose up --build
+```
 
-### Audio Separator
+4. **Access the web interface**
 
-- **Library**: [python-audio-separator](https://github.com/nomadkaraoke/python-audio-separator)
-- **License**: MIT License
-- **Purpose**: Vocal separation from audio/video files
-- **Credits**: This library is built on top of [Ultimate Vocal Remover GUI (UVR)](https://github.com/Anjok07/ultimatevocalremovergui) by Anjok07
+Open your browser and navigate to: `http://localhost:8080`
 
-### Silero VAD
+## Key Libraries & Services
 
-- **Library**: [Silero VAD](https://github.com/snakers4/silero-vad)
-- **License**: MIT License
-- **Purpose**: Voice Activity Detection for identifying speech segments in audio
-- **Credits**: Developed by Silero Team
-
-### OpenAI Whisper
-
-- **Service**: OpenAI Whisper API
-- **Purpose**: Speech-to-text transcription
-- **Website**: [OpenAI API](https://openai.com/api/)
-
-### Other Dependencies
-
-- **PyTorch**: Deep learning framework
-- **soundfile**: Audio file I/O
-- **FFmpeg**: Multimedia framework for video/audio processing
+- **[python-audio-separator](https://github.com/nomadkaraoke/python-audio-separator)** - Vocal separation (built on [Ultimate Vocal Remover GUI](https://github.com/Anjok07/ultimatevocalremovergui) by Anjok07)
+- **[Silero VAD](https://github.com/snakers4/silero-vad)** - Voice Activity Detection
+- **OpenAI Whisper API** - Speech-to-text transcription
+- **FFmpeg** - Video/audio processing and subtitle rendering
+- **ONNX Runtime** - AI model inference
+- **Noto Sans Fonts** - Multi-language subtitle support (Google Fonts, OFL license)
 
 ## Usage
 
-Run the dependency validator to check your setup:
+### Configuration
 
-```bash
-python dependency_validator.py
-```
+Environment Variables:
 
-Run the main program:
+- `OPENAI_API_KEY` - OpenAI API key for Whisper transcription (required)
+- `GEMINI_API_KEY` - Google Gemini API key for post-processing (optional)
+- `GEMINI_URL` - Gemini API endpoint URL (optional)
 
-```bash
-python main.py
-```
+### Web Interface
 
-The tool will automatically:
+1. Upload a video file (any common format: MP4, MKV, AVI, etc.)
+2. Select the language (English or Chinese)
+3. Choose a subtitle font appropriate for the language
+4. Optionally provide a Whisper prompt for better transcription context
+5. Toggle post-processing on/off and provide instructions if needed
+6. Click "Transcribe" and wait for processing to complete
+7. Download the transcribed video with hardcoded subtitles and/or the transcript JSON
 
-1. Validate all dependencies (FFmpeg, API keys, Python packages)
-2. Extract audio from video
-3. Separate vocals from background audio
-4. Detect voice activity segments
-5. Transcribe speech using Whisper
-6. Post-process transcripts
-7. Generate video with subtitles
+### Processing Pipeline
 
-## Project Structure
+The tool automatically:
 
-- `main.py` - Main application entry point
-- `voice_detector.py` - Voice separation and VAD functionality
-- `transcriber.py` - Whisper API transcription
-- `corrector.py` - Post-processing and correction
-- `video_processor.py` - Video processing and subtitle overlay
-- `dependency_validator.py` - Dependency validation utilities
-- `README.md` - This file
+1. Validates all dependencies (handled in Docker)
+2. Extracts audio from the uploaded video
+3. Separates vocals from the audio
+4. Detects voice activity segments to skip silence
+5. Transcribes speech using OpenAI Whisper API
+6. Optionally post-processes transcripts with LLM refinement
+7. Generates video with hardcoded subtitles using selected font and transcripts json
+
+### Performance Notes
+
+- The backend uses CPU-only PyTorch to ensure universal compatibility
+- First build may take several minutes due to dependency downloads
+- Subsequent builds use Docker layer caching for faster rebuilds
+- Processing time depends on video length and hardware
 
 ## License
+
 This project is licensed under the MIT License.
-
-## Contributing
-
-When contributing to this project, please ensure:
-
-1. All dependencies are properly attributed
-2. New dependencies are added to `requirements.txt`
-3. Attribution comments are added to code using third-party libraries
-
-## Disclaimer
-
-Please ensure you have the necessary rights and permissions for any media files you process with this tool. Respect copyright laws and terms of service for all APIs used.
-
-## Issues and Support
-
-For issues related to:
-
-- **Audio separation**: See [python-audio-separator issues](https://github.com/nomadkaraoke/python-audio-separator/issues)
-- **VAD**: See [Silero VAD issues](https://github.com/snakers4/silero-vad/issues)
-- **FFmpeg**: See [FFmpeg documentation](https://ffmpeg.org/documentation.html)
-- **This project**: Open an issue in this repository
