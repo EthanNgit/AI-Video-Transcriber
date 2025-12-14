@@ -63,12 +63,71 @@ document.addEventListener("DOMContentLoaded", () => {
 
   ppToggle.addEventListener("change", updatePostProcessingVisibility);
 
-  // Form Submit (Placeholder)
-  form.addEventListener("submit", (e) => {
+  // Form Submit
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    alert(
-      "Transcribe started for: " +
-        (fileInput.files[0] ? fileInput.files[0].name : "No file")
+
+    const file = fileInput.files[0];
+    if (!file) {
+      alert("Please select a video file.");
+      return;
+    }
+
+    // Show loading
+    form.classList.add("hidden");
+    document.getElementById("loadingSection").classList.remove("hidden");
+
+    const formData = new FormData();
+    formData.append("video", file);
+    formData.append("language", document.getElementById("language").value);
+    formData.append(
+      "whisper_prompt",
+      document.getElementById("whisperPrompt").value
     );
+    formData.append("post_processing", ppToggle.checked);
+    formData.append(
+      "post_processing_prompt",
+      document.getElementById("postProcessingPrompt").value
+    );
+
+    try {
+      const response = await fetch("http://localhost:8000/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Transcription failed");
+      }
+
+      const data = await response.json();
+
+      // Show result
+      document.getElementById("loadingSection").classList.add("hidden");
+      const resultSection = document.getElementById("resultSection");
+      resultSection.classList.remove("hidden");
+
+      const videoPlayer = document.getElementById("resultVideo");
+      videoPlayer.src = "http://localhost:8000" + data.video_url;
+
+      const downloadLink = document.getElementById("downloadTranscript");
+      downloadLink.href = "http://localhost:8000" + data.transcript_url;
+    } catch (error) {
+      console.error(error);
+      alert("An error occurred: " + error.message);
+      // Reset UI
+      document.getElementById("loadingSection").classList.add("hidden");
+      form.classList.remove("hidden");
+    }
+  });
+
+  // Back Button
+  document.getElementById("backBtn").addEventListener("click", () => {
+    document.getElementById("resultSection").classList.add("hidden");
+    form.classList.remove("hidden");
+    form.reset();
+    fileNameDisplay.textContent = "Click or Drag Video File Here";
+    dropZone.classList.remove("has-file");
+    updatePostProcessingVisibility();
   });
 });

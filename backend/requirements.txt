@@ -1,0 +1,8 @@
+requests
+soundfile
+python-dotenv
+openai
+fastapi
+python-multipart
+uvicorn
+onnxruntime

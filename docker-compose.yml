@@ -5,3 +5,17 @@ services:
       - "8080:80"
     volumes:
       - ./frontend:/usr/share/nginx/html
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./ephemeral:/app/ephemeral
+    environment:
+      - OPEN_AI_API_KEY=${OPEN_AI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_URL=${GEMINI_URL}

@@ -70,6 +70,28 @@
 
         <button type="submit" id="transcribeBtn">Transcribe</button>
       </form>
+
+      <div id="loadingSection" class="hidden">
+        <div class="spinner"></div>
+        <p>Transcribing video... This may take a while.</p>
+      </div>
+
+      <div id="resultSection" class="hidden">
+        <h2>Transcription Complete!</h2>
+        <div class="video-container">
+          <video id="resultVideo" controls width="100%">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+        <div class="actions">
+          <a id="downloadTranscript" href="#" class="button secondary" download
+            >Download Transcript (JSON)</a
+          >
+          <button id="backBtn" class="button secondary">
+            Transcribe Another Video
+          </button>
+        </div>
+      </div>
     </div>
     <script src="script.js"></script>
   </body>
