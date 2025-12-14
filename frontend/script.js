@@ -152,8 +152,27 @@ document.addEventListener("DOMContentLoaded", () => {
       const videoPlayer = document.getElementById("resultVideo");
       videoPlayer.src = "http://localhost:8000" + data.video_url;
 
-      const downloadLink = document.getElementById("downloadTranscript");
-      downloadLink.href = "http://localhost:8000" + data.transcript_url;
+      // Setup download button to actually download JSON
+      const downloadBtn = document.getElementById("downloadTranscript");
+      const transcriptUrl = "http://localhost:8000" + data.transcript_url;
+
+      downloadBtn.onclick = async () => {
+        try {
+          const response = await fetch(transcriptUrl);
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "transcript.json";
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch (error) {
+          console.error("Download failed:", error);
+          alert("Failed to download transcript");
+        }
+      };
     } catch (error) {
       console.error(error);
       alert("An error occurred: " + error.message);
