@@ -4,9 +4,14 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsndfile1 \
     build-essential \
+    fontconfig \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Copy fonts and install them system-wide
+COPY fonts /usr/share/fonts/truetype/custom
+RUN fc-cache -f -v
 
 COPY requirements.txt .
 COPY requirements-ml.txt .

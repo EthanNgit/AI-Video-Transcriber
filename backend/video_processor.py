@@ -34,8 +34,9 @@ class VideoProcessor:
 
         # Build subtitles filter with optional font
         if font_path and os.path.exists(font_path):
-            font_path_escaped = font_path.replace('\\', '/').replace(':', '\\:')
-            subtitles_filter = f"subtitles='{srt_path_escaped}':force_style='FontName={os.path.splitext(os.path.basename(font_path))[0]},FontFile={font_path_escaped}'"
+            font_name = os.path.splitext(os.path.basename(font_path))[0]
+            font_dir = os.path.dirname(font_path).replace('\\', '/').replace(':', '\\:')
+            subtitles_filter = f"subtitles='{srt_path_escaped}':fontsdir='{font_dir}':force_style='FontName={font_name}'"
         else:
             subtitles_filter = f"subtitles='{srt_path_escaped}'"
 
