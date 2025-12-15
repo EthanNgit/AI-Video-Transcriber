@@ -11,12 +11,27 @@ class VoiceDetector:
         pass
 
     def separate_voice_from_audio(self, path_to_audio: str, output_path: str):
-        """Separates voice from other elements in an audio file"""
+        """Separates voice from other elements in an audio file. Skips separation for short clips (<30s)."""
 
         out_dir = os.path.dirname(output_path)
         out_name = os.path.splitext(os.path.basename(output_path))[0]
 
         os.makedirs(out_dir, exist_ok=True)
+
+        # Read audio to check length
+        wav, sr = soundfile.read(path_to_audio)
+        audio_duration_sec = len(wav) / sr
+        
+        # Skip separation for short audio clips
+        if audio_duration_sec < 30:
+            print(f"Audio is {audio_duration_sec:.1f}s (< 30s). Skipping voice separation, using original audio.")
+            result_path = os.path.join(out_dir, out_name + ".wav")
+            
+            # Convert to mono if needed
+            if wav.ndim == 2:
+                wav = wav.mean(axis=1)
+            soundfile.write(result_path, wav, sr)
+            return result_path
 
         print("Separating vocals... (This may take a while)")
 
